@@ -315,7 +315,7 @@ class EMGDataset(torch.utils.data.Dataset):
             audio_file = str(voiced_audio_path)
 
         result['phonemes'] = torch.from_numpy(
-            phonemes).pin_memory()  # either from this example if vocalized or aligned example if silent
+            phonemes)  # either from this example if vocalized or aligned example if silent
         result['emg_path'] = f'{directory_info.directory}/{idx}_emg.npy'
         result['audio_file'] = audio_file
         

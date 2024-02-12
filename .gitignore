@@ -2,7 +2,7 @@
 raw_data/ 
 .data/
 exp/
-
+data/
 
 
 # Pre-trained models from speechbrain
