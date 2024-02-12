@@ -47,6 +47,35 @@ def plot_emg_signal_with_envelope(
     ax.set_xlabel(f"Sample")
     ax.set_ylabel(f"Amplitude")
     return ax
+
+def plot_emg_signal_differences(
+    emg_signal_real: np.ndarray,
+    emg_signal_fake: np.ndarray,
+    ax: Optional[plt.Axes] = None,
+    title: str = "EMG Signal",
+    ylim: Tuple[float, float] = (-1.0, 1.0),
+    channels: int = [0,1,2,3,4],
+    emg_sig_alpha: float = 0.3,
+):
+    if not ax:
+        _, ax = plt.subplots()
+    emg_diff = np.subtract(emg_signal_real, emg_signal_fake)
+    num_ch = emg_diff.shape[1]
+    emg_abs_env = get_envelope(emg_diff)
+    num_samples = min(len(emg_abs_env), len(emg_diff))
+    x_ticks = np.arange(num_samples)
+    
+    cmap = plt.get_cmap('tab10')
+    for ch_idx in (channels):
+        color = cmap(ch_idx)
+        ax.plot(x_ticks, emg_diff[:num_samples, ch_idx], label=f"Ch. {ch_idx+1}", alpha=emg_sig_alpha,
+                color=color, )
+        ax.plot(x_ticks, emg_abs_env[:num_samples, ch_idx,], label=f"Abs Env. Ch. {ch_idx+1}", color=color)
+    ax.set_title(title)
+    ax.set_ylim(*ylim)
+    ax.set_xlabel(f"Sample")
+    ax.set_ylabel(f"Amplitude")
+    return ax
     
 def plot_real_vs_fake_emg_signal_with_envelope(
     real_emg_signal: np.ndarray,
@@ -58,13 +87,14 @@ def plot_real_vs_fake_emg_signal_with_envelope(
     tb_tag_prefix: str = "emg_real_vs_fake_envelope",
     global_step: int = 0
 ):
-    fig, (ax1, ax2, ) = plt.subplots(2)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(16, 12))
     fig.suptitle(f'Real. vs. fake EMG Signal ({file_id})')
     plot_emg_signal_with_envelope(real_emg_signal, ax1, title=f"Real EMG signal")
     plot_emg_signal_with_envelope(fake_emg_signal, ax2, title=f"Fake EMG signal")
+    plot_emg_signal_differences(real_emg_signal, fake_emg_signal, ax3, title=f"EMG signal differences")
     plt.tight_layout()
     if save_as:
-        plt.savefig(save_as)
+        plt.savefig(save_as, dpi=300)
     if show:
         plt.show()
         
