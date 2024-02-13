@@ -87,7 +87,7 @@ def plot_real_vs_fake_emg_signal_with_envelope(
     tb_tag_prefix: str = "emg_real_vs_fake_envelope",
     global_step: int = 0
 ):
-    fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(16, 12))
+    fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(20, 16))
     fig.suptitle(f'Real. vs. fake EMG Signal ({file_id})')
     plot_emg_signal_with_envelope(real_emg_signal, ax1, title=f"Real EMG signal")
     plot_emg_signal_with_envelope(fake_emg_signal, ax2, title=f"Fake EMG signal")
@@ -101,5 +101,6 @@ def plot_real_vs_fake_emg_signal_with_envelope(
     if tb_summary_writer:
         tag = f"{tb_tag_prefix}_{file_id}"
         tb_summary_writer.add_figure(tag, fig, global_step)
-    
+        
+    plt.close(fig)
     return fig

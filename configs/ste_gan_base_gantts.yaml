@@ -70,4 +70,4 @@ train:
   interval_plot: 1_000
 
   # Number of samples to put on tensorboard
-  num_test_samples: 10
+  num_test_samples: 20

@@ -1,6 +1,7 @@
 import argparse
 import logging
 from pathlib import Path
+import numpy as np
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -41,34 +42,53 @@ def eval(cfg, eval_path, device, emg_enc_ckpt):
     
     speech_feature_type = cfg.model.speech_feature_type
     
-    def generate_samples(save_fig_path):
-        # save_start = time.time()
-        netG.eval()
-        for i, (sample_dict) in enumerate(valid_data_set):
-            with torch.no_grad():
-                s_t = sample_dict[speech_feature_type].unsqueeze(0).to(device)
-                sess_idx = sample_dict[DataType.SESSION_INDEX].unsqueeze(0).to(device)
-                spk_mode_idx = sample_dict[DataType.SPEAKING_MODE_INDEX].unsqueeze(0).to(device) 
-
-                # Generate the fake EMG signal
-                pred_emg = netG.generate(s_t, sess_idx, spk_mode_idx).squeeze(0).detach().cpu().numpy()
-
-                # Generate the real EMG signal
-                real_emg = sample_dict[DataType.REAL_EMG].squeeze(0).detach().cpu().numpy()
-                
-                plot_real_vs_fake_emg_signal_with_envelope(
-                    real_emg_signal=real_emg,
-                    fake_emg_signal=pred_emg,
-                    file_id=f"Validation sample {i}",
-                    save_as=save_fig_path + 'figs/emg_compare_sample_' + str(i) + '.png',
-                    tb_summary_writer=None,
-                    tb_tag_prefix="val/envelopes_emg_real_vs_fake",
-                    show=False
-                )
-            if i > cfg.train.num_test_samples:
-                break
+    noise_mean = []
+    noise_variance = []
+    snr_arr = []
     
-    generate_samples(eval_path)
+    netG.eval()
+    for i, (sample_dict) in enumerate(valid_data_set):
+        with torch.no_grad():
+            s_t = sample_dict[speech_feature_type].unsqueeze(0).to(device)
+            sess_idx = sample_dict[DataType.SESSION_INDEX].unsqueeze(0).to(device)
+            spk_mode_idx = sample_dict[DataType.SPEAKING_MODE_INDEX].unsqueeze(0).to(device) 
+
+            # Generate the fake EMG signal
+            pred_emg = netG.generate(s_t, sess_idx, spk_mode_idx).squeeze(0).detach().cpu().numpy()
+
+            # Generate the real EMG signal
+            real_emg = sample_dict[DataType.REAL_EMG].squeeze(0).detach().cpu().numpy()
+            
+            plot_real_vs_fake_emg_signal_with_envelope(
+                real_emg_signal=real_emg,
+                fake_emg_signal=pred_emg,
+                file_id=f"Validation sample {i}",
+                save_as=eval_path + 'figs/emg_compare_sample_' + str(i) + '.png',
+                tb_summary_writer=None,
+                tb_tag_prefix="val/envelopes_emg_real_vs_fake",
+                show=False
+            )
+            
+            emg_diff = np.subtract(real_emg, pred_emg)
+            noise_mean.append(np.mean(emg_diff))
+            noise_variance.append(np.var(emg_diff))
+            rms_signal = np.sqrt(np.sum(np.square(pred_emg)) / (pred_emg.shape[0]*8))
+            rms_noise = np.sqrt(np.sum(np.square(emg_diff)) / (emg_diff.shape[0]*8))
+            snr = np.square(rms_signal / rms_noise)
+            snr_arr.append(snr)
+            print(f"Avg noise: {np.mean(emg_diff)}")
+            print(f"Var noise: {np.var(emg_diff)}")
+            print(f"Avg real emg: {np.mean(pred_emg)}")
+            print(f"Var real emg: {np.var(pred_emg)}")
+            print(f"rms_signal: {rms_signal}")
+            print(f"rms_noise: {rms_noise}")
+            print(f"SNR: {snr}")
+        # if i > cfg.train.num_test_samples:
+        #     break
+    
+    print(f"Average noise: {np.mean(noise_mean)}")
+    print(f"Average var of noise: {np.mean(noise_variance)}")
+    print(f"Average SNR: {np.mean(snr_arr)}")
 
 def main(cfg: DictConfig, continue_run: bool, debug: bool, emg_enc_ckpt: Path, **kwargs):
     dataset_root = cfg.data.dataset_root
